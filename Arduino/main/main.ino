@@ -7,8 +7,8 @@
 
 #define DEBUG true
 
-#define RELLAY_SET HIGH
-#define RELLAY_OPEN LOW
+#define RELLAY_SET LOW
+#define RELLAY_OPEN HIGH
 
 #include <U8glib.h>
 #include <EEPROM.h>
@@ -23,15 +23,19 @@ DallasTemperature senzorTemper(&oneWireDS);
 
 long int updateTime = 0;
 
-float setPoint = 25.;
+float setPoint = 10.;
+
 float tollPlus = 1.;
+float tollPlusOff = 0.5;
+
 float tollMinus = 1.;
+float tollMinusOff = 0.5;
 float currTemp = -100.;
 float highestTemp = 0.;
 float lowestTemp = 100.;
 
-bool cooling = false;
-bool heating = false;
+bool isCooling = false;
+bool isHeating = false;
 
 String stateText = "Starting";
 
@@ -41,11 +45,15 @@ void setup(void) {
   
   senzorTemper.begin();
   pinMode(COOL_OUT_PIN, OUTPUT);
+  cool(false);
+  
   pinMode(HEAT_OUT_PIN, OUTPUT);
+  heat(false);
+  
   pinMode(BUTTON_PIN, INPUT_PULLUP);
 
-  byte setPointByte = EEPROM.read(0);
-  if(setPointByte < 0xFF) setPoint = setPointByte;
+  //byte setPointByte = EEPROM.read(0);
+  //if(setPointByte < 0xFF) setPoint = setPointByte;
 
   attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), buttonClick,  LOW);
 
@@ -96,12 +104,12 @@ void updateTemperData(void){
 
   if(DEBUG){
     Serial.print("Temperature curr: ");
-    Serial.println(currTemp);
+    Serial.print(currTemp);
 
-    Serial.print("Temperature highest: ");
-    Serial.println(highestTemp);
+    Serial.print(" highest: ");
+    Serial.print(highestTemp);
 
-    Serial.print("Temperature lowest: ");
+    Serial.print(" lowest: ");
     Serial.println(lowestTemp);
   }
   
@@ -111,6 +119,7 @@ void regulate(void){
 
   if(currTemp == -127.){
     stateText = "Err sensor disconn";
+    if(DEBUG) Serial.println("Error sensor disconnect");
     cool(false);
     heat(false);
     return;
@@ -118,32 +127,63 @@ void regulate(void){
   
   if(currTemp <= -99.){
     stateText = "Initializing";
+    if(DEBUG) Serial.println("Initializing");
     cool(false);
     heat(false);
     return;
   }
 
-  if(currTemp > setPoint + tollPlus){
+  // start cool
+  if(currTemp > setPoint + tollPlus && !isCooling){
+    if(DEBUG) Serial.println("Start cool");
     cool(true);
     heat(false);
     stateText = "Chladi";
     return;
   }
 
-  if(currTemp < setPoint - tollMinus){
+  // stop cool
+  if(currTemp <= setPoint + (tollPlus * tollPlusOff) && isCooling){
+    if(DEBUG) Serial.println("Stop cool");
+    cool(false);
+    heat(false);
+  }
+
+  // continue cool
+  if(currTemp > setPoint && isCooling){
+    return;
+  }
+  
+  
+  
+  
+
+  // start heat
+  if(currTemp < setPoint - tollMinus && !isHeating){
+    if(DEBUG) Serial.println("Start heat");
     cool(false);
     heat(true);
     stateText = "Hreje";
     return;
   }
 
-  cool(false);
-  heat(false);
+
+  // stop heat
+  if(currTemp >= setPoint - (tollMinus * tollMinusOff) && isHeating){
+    if(DEBUG) Serial.println("Stop heat");
+    cool(false);
+    heat(false);
+  }
+
+  // continue heat
+  if(currTemp < setPoint && isHeating){
+    return;
+  }
+
   stateText = "Teplota OK";
 }
 
 ///////////////////////////////////////
-bool isCoolRunning = false;
 long coolStartTime = 0;
 
 void cool(bool set){
@@ -153,26 +193,31 @@ void cool(bool set){
   }
   
   if(!set){
-    isCoolRunning = false;
-    digitalWrite(COOL_OUT_PIN, RELLAY_SET);
+    isCooling = false;
+    digitalWrite(COOL_OUT_PIN, RELLAY_OPEN);
     return;
+  }else{
+    if(!isCooling) coolStartTime = millis();
+    isCooling = true;
+    digitalWrite(COOL_OUT_PIN, RELLAY_SET);
   }
 
-  if(!isCoolRunning){
-    isCoolRunning = true;
-    coolStartTime = millis();
-  }
-
-  digitalWrite(COOL_OUT_PIN, RELLAY_OPEN);
 }
+
 void heat(bool set){
   if(DEBUG){
     Serial.print("Heat ");
     Serial.println(set);
   }
   
-  if(!set)digitalWrite(HEAT_OUT_PIN, RELLAY_SET);
-  else digitalWrite(HEAT_OUT_PIN, RELLAY_OPEN);
+  if(set){
+    digitalWrite(HEAT_OUT_PIN, RELLAY_SET);
+    isHeating = true;
+  }
+  else {
+    digitalWrite(HEAT_OUT_PIN, RELLAY_OPEN);
+    isHeating = false;
+  }
 }
 
 void printDisplay(){
@@ -201,7 +246,7 @@ void printDisplayPage() {
   
   display01.setPrintPos(0, 40);
   display01.print(stateText);
-  if(isCoolRunning) {
+  if(isCooling) {
     display01.print(" ");
     display01.print(timeToStr(millis()-coolStartTime));
   }
