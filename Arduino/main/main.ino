@@ -23,13 +23,13 @@ DallasTemperature senzorTemper(&oneWireDS);
 
 long int updateTime = 0;
 
-float setPoint = 10.;
+float setPoint = 19.;
 
 float tollPlus = 1.;
 float tollPlusOff = 0.5;
 
 float tollMinus = 1.;
-float tollMinusOff = 0.5;
+float tollMinusOff = -0.75;
 float currTemp = -100.;
 float highestTemp = 0.;
 float lowestTemp = 100.;
@@ -49,13 +49,12 @@ void setup(void) {
   
   pinMode(HEAT_OUT_PIN, OUTPUT);
   heat(false);
-  
-  pinMode(BUTTON_PIN, INPUT_PULLUP);
 
+  
+  //pinMode(BUTTON_PIN, INPUT_PULLUP);
   //byte setPointByte = EEPROM.read(0);
   //if(setPointByte < 0xFF) setPoint = setPointByte;
-
-  attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), buttonClick,  LOW);
+  //attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), buttonClick,  LOW);
 
   
   // pro otočení displeje o 180 stupňů
@@ -72,7 +71,7 @@ void buttonClick(){
   setPoint++;
   if(setPoint > 30) setPoint = 0;
 
-  EEPROM.update(0, (byte)setPoint);
+  //EEPROM.update(0, (byte)setPoint);
   printDisplay();
   
   if(DEBUG){
@@ -134,7 +133,7 @@ void regulate(void){
   }
 
   // start cool
-  if(currTemp > setPoint + tollPlus && !isCooling){
+  if(currTemp >= setPoint + tollPlus && !isCooling){
     if(DEBUG) Serial.println("Start cool");
     cool(true);
     heat(false);
@@ -159,7 +158,7 @@ void regulate(void){
   
 
   // start heat
-  if(currTemp < setPoint - tollMinus && !isHeating){
+  if(currTemp <= setPoint - tollMinus && !isHeating){
     if(DEBUG) Serial.println("Start heat");
     cool(false);
     heat(true);
@@ -192,18 +191,18 @@ void cool(bool set){
     Serial.println(set);
   }
   
-  if(!set){
-    isCooling = false;
-    digitalWrite(COOL_OUT_PIN, RELLAY_OPEN);
-    return;
-  }else{
+  if(set){
     if(!isCooling) coolStartTime = millis();
     isCooling = true;
     digitalWrite(COOL_OUT_PIN, RELLAY_SET);
+  }else{
+    isCooling = false;
+    digitalWrite(COOL_OUT_PIN, RELLAY_OPEN);
   }
 
 }
 
+long heatStartTime = 0;
 void heat(bool set){
   if(DEBUG){
     Serial.print("Heat ");
@@ -211,6 +210,7 @@ void heat(bool set){
   }
   
   if(set){
+    if(!isHeating) heatStartTime = millis();
     digitalWrite(HEAT_OUT_PIN, RELLAY_SET);
     isHeating = true;
   }
@@ -249,6 +249,10 @@ void printDisplayPage() {
   if(isCooling) {
     display01.print(" ");
     display01.print(timeToStr(millis()-coolStartTime));
+  }
+  if(isHeating){
+    display01.print(" ");
+    display01.print(timeToStr(millis()-heatStartTime));
   }
   
   display01.setPrintPos(0, 55);
