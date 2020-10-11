@@ -31,6 +31,7 @@ float tollPlusOff = 0.5;
 float tollMinus = 1.;
 float tollMinusOff = -0.75;
 float currTemp = -100.;
+float prevTemp = -100.;
 float highestTemp = 0.;
 float lowestTemp = 100.;
 
@@ -96,7 +97,13 @@ void loop(void) {
 
 void updateTemperData(void){
   senzorTemper.requestTemperatures();
-  currTemp = senzorTemper.getTempCByIndex(0);
+
+  float temp = senzorTemper.getTempCByIndex(0);
+  if(temp != currTemp){
+    prevTemp = currTemp;
+    currTemp = temp;
+  }
+  
 
   if(currTemp > highestTemp) highestTemp = currTemp;
   if(currTemp < lowestTemp) lowestTemp = currTemp;
@@ -137,7 +144,7 @@ void regulate(void){
     if(DEBUG) Serial.println("Start cool");
     cool(true);
     heat(false);
-    stateText = "Chladi";
+    stateText = "Chl";
     return;
   }
 
@@ -162,7 +169,7 @@ void regulate(void){
     if(DEBUG) Serial.println("Start heat");
     cool(false);
     heat(true);
-    stateText = "Hreje";
+    stateText = "Top";
     return;
   }
 
@@ -246,6 +253,10 @@ void printDisplayPage() {
   
   display01.setPrintPos(0, 40);
   display01.print(stateText);
+
+  if(prevTemp < currTemp) display01.print(" St");
+  if(prevTemp > currTemp) display01.print(" Kl");
+  
   if(isCooling) {
     display01.print(" ");
     display01.print(timeToStr(millis()-coolStartTime));
@@ -272,14 +283,17 @@ String timeToStr(long timeMillis){
       long hours = minuts / 60;
       minuts -= (hours * 60);
       result += hours;
-      result += "h ";
+      result += ":";
+    }else{
+      result += "0:";
     }
     
     result += minuts;
-    result += "m ";
+    result += ":";
+  }else{
+    result += "0:0:";
   }
   result += sec;
-  result += "s";
 
   return result;
 }
