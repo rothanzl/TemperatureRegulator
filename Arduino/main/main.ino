@@ -7,6 +7,9 @@
 
 #define DEBUG true
 
+#define HEAT_ENABLE true
+#define COOL_ENABLE true
+
 #define RELLAY_SET LOW
 #define RELLAY_OPEN HIGH
 
@@ -139,52 +142,58 @@ void regulate(void){
     return;
   }
 
-  // start cool
-  if(currTemp >= setPoint + tollPlus && !isCooling){
-    if(DEBUG) Serial.println("Start cool");
-    cool(true);
-    heat(false);
-    stateText = "Chl";
-    return;
+  if(COOL_ENABLE){
+    // start cool
+    if(currTemp >= setPoint + tollPlus && !isCooling){
+      if(DEBUG) Serial.println("Start cool");
+      cool(true);
+      heat(false);
+      stateText = "Chl";
+      return;
+    }
+  
+    // stop cool
+    if(currTemp <= setPoint + (tollPlus * tollPlusOff) && isCooling){
+      if(DEBUG) Serial.println("Stop cool");
+      cool(false);
+      heat(false);
+    }
+  
+    // continue cool
+    if(currTemp > setPoint && isCooling){
+      return;
+    }
   }
 
-  // stop cool
-  if(currTemp <= setPoint + (tollPlus * tollPlusOff) && isCooling){
-    if(DEBUG) Serial.println("Stop cool");
-    cool(false);
-    heat(false);
-  }
-
-  // continue cool
-  if(currTemp > setPoint && isCooling){
-    return;
+  
+  
+  if(HEAT_ENABLE){
+    // start heat
+    if(currTemp <= setPoint - tollMinus && !isHeating){
+      if(DEBUG) Serial.println("Start heat");
+      cool(false);
+      heat(true);
+      stateText = "Top";
+      return;
+    }
+  
+  
+    // stop heat
+    if(currTemp >= setPoint - (tollMinus * tollMinusOff) && isHeating){
+      if(DEBUG) Serial.println("Stop heat");
+      cool(false);
+      heat(false);
+    }
+  
+    // continue heat
+    if(currTemp < setPoint && isHeating){
+      return;
+    }
   }
   
   
+
   
-  
-
-  // start heat
-  if(currTemp <= setPoint - tollMinus && !isHeating){
-    if(DEBUG) Serial.println("Start heat");
-    cool(false);
-    heat(true);
-    stateText = "Top";
-    return;
-  }
-
-
-  // stop heat
-  if(currTemp >= setPoint - (tollMinus * tollMinusOff) && isHeating){
-    if(DEBUG) Serial.println("Stop heat");
-    cool(false);
-    heat(false);
-  }
-
-  // continue heat
-  if(currTemp < setPoint && isHeating){
-    return;
-  }
 
   stateText = "Teplota OK";
 }
