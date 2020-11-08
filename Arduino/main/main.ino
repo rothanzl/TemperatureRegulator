@@ -46,6 +46,7 @@ String stateText = "Starting";
 
 void setup(void) {
   Serial.begin(9600);
+  Serial.setTimeout(250);
   
   senzorTemper.begin();
   pinMode(COOL_OUT_PIN, OUTPUT);
@@ -55,47 +56,37 @@ void setup(void) {
   heat(false);
 
   
-  //pinMode(BUTTON_PIN, INPUT_PULLUP);
-  //byte setPointByte = EEPROM.read(0);
-  //if(setPointByte < 0xFF) setPoint = setPointByte;
-  //attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), buttonClick,  LOW);
-
-  
-  // pro otočení displeje o 180 stupňů
-  // stačí odkomentovat řádek níže
-  // display01.setRot180();
-}
-
-long lastButtonClick = 0;
-#define BUTTON_TIME_INSENSITIVITY 50
-void buttonClick(){
-  if(lastButtonClick + BUTTON_TIME_INSENSITIVITY > millis()) return;
-  
-  lastButtonClick = millis();
-  setPoint++;
-  if(setPoint > 30) setPoint = 0;
-
-  //EEPROM.update(0, (byte)setPoint);
-  printDisplay();
-  
-  if(DEBUG){
-    Serial.print("Set point ");
-    Serial.println(setPoint);
+  byte setPointByteHigh = EEPROM.read(0);
+  if(setPointByteHigh < 0xFF){
+    byte setPointByteLow = EEPROM.read(1);
+    if(setPointByteLow == 0xFF) setPointByteLow = 0;
+    String setPointString = String(setPointByteHigh) + '.' + setPointByteLow;
+    Serial.println(String("Readed setpoint: ") + setPointString);
+    setPoint = setPointString.toFloat();
   }
+  
 }
+
 
 void loop(void) {
 
+  updateSetPoint();
+  updateTemperData();
+  regulate();
+  printDisplay(); 
   
-  if (millis()-updateTime > 500) {
+}
 
-    updateTemperData();
-    regulate();
-    printDisplay();
+void updateSetPoint(){
+  String readedData = Serial.readString();
+  if(readedData.length() < 1) return;
 
-    updateTime = millis();
-  }
-  
+  float parsedData = readedData.toFloat();
+  if(parsedData == 0. && readedData[0] == '0') return;
+  setPoint = parsedData;
+
+  EEPROM.update(0, (byte)setPoint);
+  EEPROM.update(1, (byte) 100*(setPoint-(byte)setPoint) );
 }
 
 void updateTemperData(void){
