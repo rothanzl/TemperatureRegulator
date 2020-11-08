@@ -82,7 +82,7 @@ void updateSetPoint(){
   if(readedData.length() < 1) return;
 
   float parsedData = readedData.toFloat();
-  if(parsedData == 0. && readedData[0] == '0') return;
+  if(parsedData == 0. && readedData[0] != '0') return;
   setPoint = parsedData;
 
   EEPROM.update(0, (byte)setPoint);
