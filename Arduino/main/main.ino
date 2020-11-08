@@ -26,7 +26,7 @@ DallasTemperature senzorTemper(&oneWireDS);
 
 long int updateTime = 0;
 
-float setPoint = 20.;
+float setPoint = 19.;
 
 float tollPlus = 1.;
 float tollPlusOff = 0.5;
