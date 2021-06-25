@@ -26,7 +26,7 @@ DallasTemperature senzorTemper(&oneWireDS);
 
 long int updateTime = 0;
 
-float setPoint = 19.;
+float setPoint = 5.;
 
 float tollPlus = 1.;
 float tollPlusOff = 0.5;
@@ -105,6 +105,9 @@ void updateTemperData(void){
   if(DEBUG){
     Serial.print("Temperature curr: ");
     Serial.print(currTemp);
+
+    Serial.print(" SP: ");
+    Serial.print(setPoint);
 
     Serial.print(" highest: ");
     Serial.print(highestTemp);
